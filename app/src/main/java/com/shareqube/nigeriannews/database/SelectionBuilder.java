@@ -41,7 +41,7 @@ public class SelectionBuilder {
     }
 
 
-     
+
     public SelectionBuilder where(String selection, String... selectionArgs) {
         if (TextUtils.isEmpty(selection)) {
             if (selectionArgs != null && selectionArgs.length > 0) {

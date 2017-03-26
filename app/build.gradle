@@ -1,9 +1,16 @@
 apply plugin: 'com.android.application'
 
 android {
+    signingConfigs {
+        config {
+            keyAlias 'news247'
+            keyPassword 'icecube100'
+            storeFile file("$rootDir/news.jks")
+            storePassword 'icecube100'
+        }
+    }
     compileSdkVersion 24
     buildToolsVersion "24.0.0"
-
     defaultConfig {
         applicationId "com.shareqube.nigeriannews"
         minSdkVersion 16
@@ -15,6 +22,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.config
         }
     }
 }
@@ -31,7 +39,6 @@ dependencies {
     compile 'com.android.support:design:24.1.1'
     compile 'com.google.firebase:firebase-messaging:9.8.0'
     compile 'com.google.android.gms:play-services-appinvite:9.8.0'
-
     testCompile 'junit:junit:4.12'
 }
 apply plugin: 'com.google.gms.google-services'
