@@ -1,0 +1,439 @@
+package com.shareqube.nigeriannews;
+
+import android.app.Dialog;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.os.Handler;
+import android.support.design.widget.NavigationView;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.Loader;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarDrawerToggle;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
+import android.util.Log;
+import android.view.Gravity;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.google.android.gms.appinvite.AppInviteInvitation;
+import com.google.android.gms.common.ConnectionResult;
+
+
+import com.google.android.gms.common.api.GoogleApiClient;
+
+import com.shareqube.nigeriannews.database.NewsLoader;
+import com.shareqube.nigeriannews.rss.RSSParser;
+import com.shareqube.nigeriannews.services.SyncUtils;
+
+
+
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>,
+        NavigationView.OnNavigationItemSelectedListener,GoogleApiClient.OnConnectionFailedListener{
+    private static final String LOG_TAG_ =  MainActivity.class.getSimpleName();
+
+    public Context nContext;
+    private boolean mTwoPane;
+    private RecyclerView mRecyclerView;
+    boolean isConnected;
+    private TextView networkUnavailable;
+    private ProgressDialog mProgress;
+    private static final int REQUEST_INVITE = 1;
+
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        if(findViewById(R.id.drawer_layout)!=null){
+
+            mTwoPane = false ;
+
+            ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                    this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+            drawer.setDrawerListener(toggle);
+            toggle.syncState();
+        }else {
+            mTwoPane = true;
+        }
+
+        RSSParser.link = "http://www.techrepublic.com/mediafed/articles/latest/";
+
+        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(this);
+
+
+        SyncUtils.CreateSyncAccount(this);
+        mProgress = new ProgressDialog(this);
+
+        isConnected = Utility.isNetworkAvailable(this);
+        mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+
+        networkUnavailable = (TextView) findViewById(R.id.networkUnavailable);
+
+        getSupportLoaderManager().initLoader(0, null, this);
+
+        nContext = this;
+        fetchCurrentNews();
+
+
+
+    }
+
+    @Override
+    public void onBackPressed() {
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        if(drawer!=null) {
+            if (drawer.isDrawerOpen(GravityCompat.START)) {
+                drawer.closeDrawer(GravityCompat.START);
+            } else {
+                super.onBackPressed();
+            }
+        }
+    }
+
+    private void sendInvitation() {
+        Intent intent = new AppInviteInvitation.IntentBuilder(getString(R.string.invitation_title))
+                .setMessage(getString(R.string.invitation_message))
+                .setCallToActionText(getString(R.string.invitation_cta))
+                .build();
+        startActivityForResult(intent, REQUEST_INVITE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Log.d(LOG_TAG_, "onActivityResult: requestCode=" + requestCode +
+                ", resultCode=" + resultCode);
+
+        if (requestCode == REQUEST_INVITE) {
+            if (resultCode == RESULT_OK) {
+                // Check how many invitations were sent.
+                String[] ids = AppInviteInvitation
+                        .getInvitationIds(resultCode, data);
+                Log.d(LOG_TAG_, "Invitations sent: " + ids.length);
+
+            } else {
+                // Sending failed or it was canceled, show failure message to
+                // the user
+                Log.d(LOG_TAG_, "Failed to send invitation.");
+            }
+        }
+    }
+
+
+
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }else if (id == R.id.invite_menu){
+
+            sendInvitation();
+
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(MenuItem item) {
+        // Handle navigation view item clicks here.
+        int id = item.getItemId();
+
+        if (id == R.id.nav_technology) {
+
+            // get tech news from bbc
+            RSSParser.link = "http://feeds.bbci.co.uk/news/technology/rss.xml?edition=uk";
+            fetchCurrentNews();
+
+        } else if (id == R.id.nav_sport) {
+
+
+            RSSParser.link = "http://feeds.bbci.co.uk/sport/rss.xml?edition=uk";
+            fetchCurrentNews();
+        } else if (id == R.id.nav_business) {
+
+
+            RSSParser.link = "http://businessnews.com.ng/feed/";
+            fetchCurrentNews();
+
+        } else if (id == R.id.nav_local) {
+
+            RSSParser.link = "http://thenationonlineng.net/feed/";
+            fetchCurrentNews();
+
+
+        }
+
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        if (drawer != null) {
+            //Checking for null will make sure that there is no null pointer exception in the x-large screens where there is no nav drawer layout.
+            //Add a similar null check for mDrawerLayout wherever you are using the mDrawerLayout variable.
+
+            // Setup ActionBar Icon.
+            getSupportActionBar().setHomeButtonEnabled(true);
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+
+            // ActionBarDrawerToggle ties together the proper interactions
+            // between the sliding drawer and the action bar app icon
+            ActionBarDrawerToggle mDrawerToggle = new ActionBarDrawerToggle(
+                    this,
+                    drawer,
+                    toolbar,
+                    R.string.navigation_drawer_open,
+                    R.string.navigation_drawer_close) {
+
+                public void onDrawerClosed(View view) {
+                    super.onDrawerClosed(view);
+                }
+
+                public void onDrawerOpened(View drawerView) {
+
+                    super.onDrawerOpened(drawerView);
+                }
+            };
+
+            drawer.setDrawerListener(mDrawerToggle);
+        }
+        return true;
+
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+    }
+
+    @Override
+    public void onPause() {
+
+        super.onPause();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+    }
+
+
+
+
+    @Override
+    public void onDestroy() {
+
+
+        super.onDestroy();
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
+        return NewsLoader.newAllArticlesInstance(this);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
+
+        Log.e(LOG_TAG_, "finished" + cursor.toString());
+        Adapter adapter = new Adapter(cursor);
+        adapter.setHasStableIds(true);
+        mRecyclerView.setAdapter(adapter);
+        LinearLayoutManager lm =
+                new LinearLayoutManager(this);
+        mRecyclerView.setLayoutManager(lm);
+
+    }
+
+    @Override
+    public void onConnectionFailed(ConnectionResult connectionResult) {
+        Log.d(LOG_TAG_, "onConnectionFailed:" + connectionResult);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        mRecyclerView.setAdapter(null);
+    }
+
+    private void fetchCurrentNews() {
+
+        if (isConnected) {
+            networkUnavailable.setVisibility(View.GONE);
+            mProgress.setMessage(getString(R.string.progress_dialogue));
+            mProgress.show();
+            progressDelay(6000,mProgress);
+            SyncUtils.TriggerRefresh();
+        } else {
+            networkUnavailable.setVisibility(View.VISIBLE);
+            return;
+        }
+    }
+
+
+// Recycler View Adapter
+
+    private class Adapter extends RecyclerView.Adapter<ViewHolder>  {
+
+
+
+
+        private Cursor mCursor ;
+
+
+        public Adapter(Cursor cursor)
+        {
+            mCursor = cursor;
+            Log.e(LOG_TAG_ , cursor.toString());
+        }
+
+        @Override
+        public long getItemId(int position) {
+            mCursor.moveToPosition(position);
+            return mCursor.getLong(NewsLoader.Query.COLUMN_ID);
+        }
+
+        @Override
+        public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            View view = getLayoutInflater().inflate(R.layout.news_item, parent, false);
+
+            final ViewHolder vh = new ViewHolder(view);
+            view.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+
+                    if(isConnected) {
+
+
+
+                        long rowId = getItemId(vh.getAdapterPosition());
+
+
+                        Intent feedDetail = new Intent(getApplicationContext(), NewsDetailActivity.class);
+                        Bundle bundle = new Bundle();
+                        bundle.putLong("rowId", rowId);
+                        feedDetail.putExtras(bundle);
+                        startActivity(feedDetail);
+                    }else {
+
+                        Utility.showToastForDuration(getApplicationContext(), getString(R.string.offline_text), 5000,
+                                Gravity.CENTER);
+                    }
+                }
+            });
+
+
+
+            return vh;
+        }
+
+        @Override
+        public void onBindViewHolder(ViewHolder holder, int position) {
+            mCursor.moveToPosition(position);
+            holder.titleView.setText(mCursor.getString(NewsLoader.Query.COLUMN_TITLE));
+            holder.description.setText(mCursor.getString(NewsLoader.Query.COLUMN_DESC));
+            holder.pubDate.setText(mCursor.getString(NewsLoader.Query.COLUMN_PUB_DATE));
+
+
+            if(mCursor.getString(NewsLoader.Query.COLUMN_PHOTO_URL)==null){
+                Glide.with(holder.thumbnailView.getContext()).load(mCursor.getString(
+                        NewsLoader.Query.COLUMN_PHOTO_URL2))
+
+                        //load images as bitmaps to get fixed dimensions
+                        .asBitmap()
+
+                        //set a placeholder image
+                        .placeholder(R.mipmap.ic_launcher)
+
+                        //disable cache to avoid garbage collection that may produce crashes
+                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .into(holder.thumbnailView);
+
+
+            }else{
+
+                Glide.with(holder.thumbnailView.getContext()).load(mCursor.getString(
+                        NewsLoader.Query.COLUMN_PHOTO_URL))
+
+                        //load images as bitmaps to get fixed dimensions
+                        .asBitmap()
+
+                        //set a placeholder image
+                        .placeholder(R.mipmap.ic_launcher)
+
+                        //disable cache to avoid garbage collection that may produce crashes
+                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .into(holder.thumbnailView);
+
+            }
+
+        }
+
+        @Override
+        public int getItemCount() {
+            return mCursor.getCount();
+        }
+    }
+
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        public ImageView thumbnailView;
+        public TextView titleView;
+        public TextView description;
+        public TextView pubDate;
+
+        public ViewHolder(View view) {
+            super(view);
+            thumbnailView = (ImageView) view.findViewById(R.id.image_view);
+            titleView = (TextView) view.findViewById(R.id.title_view);
+            description = (TextView) view.findViewById(R.id.description_view);
+            pubDate = (TextView) view.findViewById(R.id.date_view);
+        }
+    }
+
+    public void progressDelay(long time, final Dialog d){
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            public void run() {
+                d.dismiss();
+            }
+        }, time);
+    }
+
+
+}

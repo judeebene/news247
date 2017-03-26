@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "626904625420",
+    "firebase_url": "https://news-66176.firebaseio.com",
+    "project_id": "news-66176",
+    "storage_bucket": "news-66176.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:626904625420:android:10196514de8d27f2",
+        "android_client_info": {
+          "package_name": "com.shareqube.nigeriannews"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "626904625420-ae3nit12p28abic7b0f4ior06qs08tej.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbSnucgm7jX-EmlhwafdRVArUvc4hrRF8"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

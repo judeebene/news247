@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">News 247</string>
+    <string name="no_network_text_view">Network not available</string>
+    <string name="action_settings">Settings</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="cat_tech">Technology</string>
+    <string name="cat_Sport">Sport</string>
+    <string name="cat_local">Local</string>
+    <string name="cat_bus">Business</string>
+    <string name="nav_header_text">Categories</string>
+    <string name="title_activity_news_detail">NewsDetailActivity</string>
+    <string name="offline_text" translatable="true">Please make sure you are Connected to a network</string>
+
+    <string name="widget_empty_list">Nothing in the list</string>
+    <string name="widget_title"> News 247</string>
+    <string name="invite_menu_label">Invite</string>
+    <string name="invitation_message">Hello, please download this App and test</string>
+    <string name="invitation_cta">Call to action</string>
+    <string name="invitation_title"> News 247 Invite</string>
+    <string name="progress_dialogue">Please Wait...</string>
+    <string name="webview_error">Can not Load Page</string>
+    <string name="post_image">Post Image</string>
+    <string name="post_title">News Titlt</string>
+    <string name="post_date">Wednesday, 15</string>
+    <string name="post_description">Description</string>
+</resources>
